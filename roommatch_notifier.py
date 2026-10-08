@@ -3,6 +3,7 @@
 Usage:
     python roommatch_notifier.py            # notify about new matches, update seen.json
     python roommatch_notifier.py --dry-run  # print matches, send nothing, change nothing
+    python roommatch_notifier.py --test     # send the newest match to Discord, change nothing
 
 The Discord webhook URL is read from the DISCORD_WEBHOOK_URL environment variable.
 On the very first run (no seen.json yet) existing listings are recorded without
@@ -129,6 +130,16 @@ def main():
                   f'{l["city"]["name"]:<12} {l["street"]} {l["houseNumber"]}  '
                   f'{DETAILS_URL.format(l["urlKey"])}')
         print(f"{len(listings)} matching listing(s)")
+        return
+
+    if "--test" in sys.argv:
+        webhook_url = os.environ.get("DISCORD_WEBHOOK_URL")
+        if not webhook_url:
+            sys.exit("DISCORD_WEBHOOK_URL is not set")
+        if not listings:
+            sys.exit("No matching listings to send as a test")
+        send_to_discord(webhook_url, listings[-1:])
+        print(f'Sent test notification for listing {listings[-1]["id"]}')
         return
 
     now = datetime.now(timezone.utc)

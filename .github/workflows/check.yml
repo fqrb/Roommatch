@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "*/15 * * * *"
   workflow_dispatch:
+    inputs:
+      test:
+        description: "Send a test notification (newest matching listing) instead of checking"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -22,12 +27,20 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Send test notification
+        if: inputs.test
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python roommatch_notifier.py --test
+
       - name: Check for new listings
+        if: ${{ !inputs.test }}
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python roommatch_notifier.py
 
       - name: Save seen listings
+        if: ${{ !inputs.test }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
