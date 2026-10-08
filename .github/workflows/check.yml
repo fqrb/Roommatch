@@ -2,8 +2,8 @@ name: Check ROOM listings
 
 on:
   schedule:
-    # GitHub cron can't go below 5 minutes, so each run loops and checks once a
-    # minute for ~55 minutes; the next scheduled run queues behind it.
+    # GitHub cron can't go below 5 minutes, so each run loops and checks every
+    # 30 seconds for ~55 minutes; the next scheduled run queues behind it.
     - cron: "*/30 * * * *"
   workflow_dispatch:
     inputs:
@@ -36,21 +36,11 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python roommatch_notifier.py --test
 
-      - name: Check for new listings every minute
+      - name: Check for new listings every 30 seconds
         if: ${{ !inputs.test }}
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          end=$((SECONDS + 55 * 60))
-          while [ $SECONDS -lt $end ]; do
-            next=$((SECONDS + 60))
-            python roommatch_notifier.py || echo "Check failed, retrying next minute"
-            git add seen.json
-            if ! git diff --cached --quiet; then
-              git commit -m "Update seen listings"
-              git pull --rebase && git push || echo "Push failed, retrying next minute"
-            fi
-            if [ $SECONDS -lt $next ]; then sleep $((next - SECONDS)); fi
-          done
+          python -u roommatch_notifier.py --loop 3300 --interval 30

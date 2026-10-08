@@ -3,5 +3,6 @@
   "housing_types": [],
   "furnishing": [],
   "max_total_rent": null,
-  "min_area": null
+  "min_area": null,
+  "urgent_mention": "@everyone"
 }
