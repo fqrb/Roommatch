@@ -2,7 +2,9 @@ name: Check ROOM listings
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    # GitHub cron can't go below 5 minutes, so each run loops and checks once a
+    # minute for ~55 minutes; the next scheduled run queues behind it.
+    - cron: "*/30 * * * *"
   workflow_dispatch:
     inputs:
       test:
@@ -20,6 +22,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 70
     steps:
       - uses: actions/checkout@v4
 
@@ -33,16 +36,21 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python roommatch_notifier.py --test
 
-      - name: Check for new listings
+      - name: Check for new listings every minute
         if: ${{ !inputs.test }}
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        run: python roommatch_notifier.py
-
-      - name: Save seen listings
-        if: ${{ !inputs.test }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add seen.json
-          git diff --cached --quiet || (git commit -m "Update seen listings" && git push)
+          end=$((SECONDS + 55 * 60))
+          while [ $SECONDS -lt $end ]; do
+            next=$((SECONDS + 60))
+            python roommatch_notifier.py || echo "Check failed, retrying next minute"
+            git add seen.json
+            if ! git diff --cached --quiet; then
+              git commit -m "Update seen listings"
+              git pull --rebase && git push || echo "Push failed, retrying next minute"
+            fi
+            if [ $SECONDS -lt $next ]; then sleep $((next - SECONDS)); fi
+          done
