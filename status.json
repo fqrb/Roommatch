@@ -1,7 +1,7 @@
 {
  "checks": 330,
- "consecutive_failures": 0,
+ "consecutive_failures": 5,
  "date": "2026-10-21",
- "failures": 0,
+ "failures": 5,
  "new": 0
 }
